@@ -8,20 +8,24 @@
 
 
 
-
 char* datoteka = "to do list.txt";
 
-static int BrojObaveze=1;
+int BrObaveze;
 
 
 
 void naslov();
 int izbornik();
 void stvori_datoteku();
+int BrojacDat();
 void dodaj();
-void* ucitaj();	
 void prikaz();
 void IzbrisiDatoteku();
+OBAVEZE* zauzimanje(int);
+void UnosPolje(OBAVEZE*,int);
+void IzbrisiObavezu(OBAVEZE*, int);
+void UrediObavezu(OBAVEZE*, int broj);
+
 
 //Funkcije za kalendar
 void kalendar();
@@ -64,7 +68,12 @@ int izbornik() {
 	int opcija;
 
 	do {
-		
+
+		int broj = BrojacDat();
+		static OBAVEZE* PoljeObaveza = NULL;
+		PoljeObaveza = zauzimanje(broj);
+		UnosPolje(PoljeObaveza, broj);
+
 		printf("\n\t\t\t\t\t\t1. Dodaj obavezu\n\n");
 		printf("\t\t\t\t\t\t2. Izbrisi obavezu\n\n");
 		printf("\t\t\t\t\t\t3. Uredi postojecu obavezu\n\n");
@@ -76,9 +85,7 @@ int izbornik() {
 		printf("\nOdabir opcije: ");
 		scanf("%d", &opcija);
 		
-
-		static OBAVEZE* PoljeObaveza = NULL;
-		static OBAVEZE* TrazenaObaveza = NULL;
+		
 
 		
 		switch (opcija) {
@@ -86,7 +93,7 @@ int izbornik() {
 			dodaj();
 			break;
 		case 2:
-			//printf("\nIzbrisi obavezu broj:  ");
+			IzbrisiObavezu(PoljeObaveza,broj);
 			break;
 		case 3:
 			//printf("\nUredi postojecu obavezu broj: ");
@@ -125,14 +132,24 @@ void stvori_datoteku() {
 		perror("Problem: ");
 		exit(EXIT_FAILURE);
 	}
-	else {
-		printf("\nDatoteka napravljena");
-	}
-	
 	fclose(mapa);
 }
 
 
+int BrojacDat() {
+	int br=0;
+	FILE* Brf = NULL;
+	
+	Brf = fopen("br.txt", "r+");
+	if (Brf == NULL) {
+		perror("Problem kod stvaranje datoteke za brojac");
+	}
+	
+	
+	fscanf(Brf,"%d", &br);
+	fclose(Brf);
+	return br;
+}
 
 void dodaj() {
 	system("cls");
@@ -145,52 +162,51 @@ void dodaj() {
 		exit(EXIT_FAILURE);
 		
 	}
-	else {
-		printf("\nDATOTEKA ZA DODAVANJE CLANOVA UCITANA");
+
+
+
+	BrObaveze = BrojacDat();
+	
+	BrObaveze++;
+	printf("\nBroj iz br.txt : %d", BrObaveze);
+
+	FILE* x = NULL;
+	x = fopen("br.txt","r+");
+		if (x == NULL) {
+			perror("Zapisivanje u br.txt error");
+		}
+	rewind(x);
+	fprintf(x,"%d", BrObaveze);
+	fclose(x);
+
+	
+	OBAVEZE *temp=NULL;
+
+	temp = (OBAVEZE*)calloc(BrObaveze,sizeof(OBAVEZE));
+	if (temp == NULL) {
+		return NULL;
 	}
 
 	
 	
-	OBAVEZE temp = { 0 };
-
-	fread(&BrojObaveze, sizeof(int),1, fp);
-	temp.br = BrojObaveze;
-	
 	printf("\nUnesite obavezu: ");
-	getchar();
-	scanf("%199[^\n]", temp.obaveza);
-	printf("%s", temp.obaveza);
 	
-	fprintf(fp, "%d. %s\n\n", temp.br, temp.obaveza);
+	getchar();
+	int br2 = BrObaveze;
+	BrObaveze--;
+	scanf("%199[^\n]", temp[BrObaveze].obaveza);
+	printf("%s", temp[BrObaveze].obaveza);
+	temp[BrObaveze].br = br2;
+	fprintf(fp, "%d. %s\n\n", temp[BrObaveze].br, temp[BrObaveze].obaveza);
 	
 
-	BrojObaveze++;
-	
+	   
+	fclose(x);
 	fclose(fp);
 	system("cls");
 }
  
-void* ucitaj() {
-	FILE* fpp = NULL;
-	fpp = fopen(datoteka,"r");
-	if (fpp == NULL) {
-		perror("Ucitavanje obaveza error");
-		exit(EXIT_FAILURE);
-	}
 
-	fread(&BrojObaveze, sizeof(int), 1, fpp);
-	printf("\nBroj obaveza unesenih: %d\n",BrojObaveze);
-	
-	OBAVEZE* PoljeObaveza = (OBAVEZE*)calloc(BrojObaveze, sizeof(OBAVEZE));
-	if (PoljeObaveza == NULL) {
-		perror("Problem kod zauzimanja memorije za polje obaveza");
-		exit(EXIT_FAILURE);
-	}
-
-	fread(PoljeObaveza,sizeof(OBAVEZE),BrojObaveze,fpp);
-	return PoljeObaveza;
-	fclose(fpp);
-}
 
 void prikaz() {
 	system("cls");
@@ -199,16 +215,25 @@ void prikaz() {
 
 	if (fp == NULL) {
 		perror("citanje clanova error");
-		printf("Nema obaveza! Probajte dodati koju obavezu.");
 	}
+
+	
+
+
 	else {
 
-		printf("Vase obaveze su:\n\n");
+		
 		char c;
 		c = fgetc(fp);
 		while (c != EOF) {
 			printf("%c",c);
 			c = fgetc(fp);
+		}
+
+		fseek(fp, 0, SEEK_END);
+		int size = ftell(fp);
+		if (size == 0) {
+			printf("\nNema unesenih obaveza! Probajte upisati koju obavezu..");
 		}
 		
 		printf("\n\n\n");
@@ -238,6 +263,14 @@ void IzbrisiDatoteku() {
 		}
 		fclose(fp);
 	}
+
+	FILE* x = NULL;
+	x = fopen("br.txt", "w");
+		if (x == NULL) {
+			perror("Brisanje br.txt");
+		}
+	fprintf(x,"%d",0);
+	fclose(x);
 	system("cls");
 }
 
@@ -251,5 +284,97 @@ void kalendar() {
 
 	system("pause");
 	system("cls");
+
+}
+
+OBAVEZE* zauzimanje(int broj) {
+	OBAVEZE* polje = NULL;
+	polje = (OBAVEZE*)calloc(broj,sizeof(OBAVEZE));
+	if (polje == NULL) {
+		return NULL;
+		perror("Zauzimanje polja");
+	}
+	else {
+		return polje;
+	}
+
+}
+
+void UnosPolje(OBAVEZE* ob, int broj) {
+	
+	FILE* fp = NULL;
+	fp = fopen(datoteka,"r");
+	if (fp == NULL) {
+		perror("otvaranje datoteke kod unosa podataka u polje");
+	}
+
+	
+
+	int i;
+	for(i=0; i<broj; i++){
+		fscanf(fp, "%d%*c %199[^\n]", &ob[i].br, ob[i].obaveza);
+	}
+
+
+
+
+	fclose(fp);
+}
+
+void IzbrisiObavezu(OBAVEZE* p, int broj) {
+	int num,i;
+	char YesNo;
+	system("cls");
+
+	do {
+		printf("\nJeste li sigurni da zelite izbrisati obavezu, pritisnite n za povratak! y/n: ");
+		scanf(" %c", &YesNo);
+	} while (YesNo != 'n' && YesNo != 'N' && YesNo != 'y' && YesNo != 'Y');
+
+
+	if (YesNo == 'y' || YesNo == 'Y') {
+
+		do {
+			printf("\nUnesite broj obaveze koji zelite izbrisati: ");
+			scanf("%d", &num);
+
+			if (num > broj || num <= 0) {
+				printf("\nNe postoji obaveza pod tim brojem!");
+			}
+		} while (num > broj || num <= 0);
+
+
+		for (i = num - 1; i < broj - 1; i++) {
+			p[i] = p[i + 1];
+		}
+
+		broj--;
+		FILE* fp = NULL;
+		fp = fopen("br.txt", "r+");
+		if (fp == NULL) {
+			exit(EXIT_FAILURE);
+		}
+		rewind(fp);
+		fprintf(fp, "%d", broj);
+		fclose(fp);
+
+
+
+		FILE* np = NULL;
+		np = fopen(datoteka, "w+");
+		if (np == NULL) {
+			exit(EXIT_FAILURE);
+		}
+		for (i = 0; i < broj; i++) {
+			p[i].br = i + 1;
+			fprintf(np, "%d. %s\n\n", p[i].br, p[i].obaveza);
+		}
+		fclose(np);
+		system("cls");
+	}
+	system("cls");
+}
+
+void UrediObavezu(OBAVEZE* p, int broj) {
 
 }
